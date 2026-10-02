@@ -571,12 +571,20 @@ p{margin:0 0 .8em}
 
   function renderModeratorTable(info, mod){
     if(info.type==='numeric'){
-      const t = info.table;
+      const t = info.table[0] || {};
       paginatedTable('moderatorTable', ['n','Mean','SD','Median','Min','Max','β'],
         [[t.n,t.mean,t.sd,t.median,t.min,t.max,t.beta]], { pageSize: 100, sortCol: null });
     } else {
-      const rows = info.table.map(r => [r.Moderator_Levels, r.g, r.ci_lower, r.ci_upper, r.k]);
-      paginatedTable('moderatorTable', ['Moderator Level','g','CI lower','CI upper','k'], rows, { pageSize: 100 });
+      const rows = info.table.map(r => {
+        const lv = r.Moderator_Levels;
+        const sub = ES.filter(e => e[mod] === lv);
+        const gs = sub.map(e => e.g);
+        const n = gs.length;
+        const mean = gs.reduce((a,b)=>a+b,0) / n;
+        const sd = n > 1 ? Math.sqrt(gs.reduce((a,b)=>a+(b-mean)*(b-mean),0) / (n-1)) : 0;
+        return [lv, n, mean.toFixed(2), sd.toFixed(2), r.g, r.ci_lower, r.ci_upper];
+      });
+      paginatedTable('moderatorTable', ['Moderator Level','n','Mean','SD','g','CI lower','CI upper'], rows, { pageSize: 100 });
     }
   }
 
@@ -593,7 +601,7 @@ p{margin:0 0 .8em}
         traces.push({type:'scatter', mode:'lines', x:info.smooth.map(s=>s.x), y:info.smooth.map(s=>s.y), line:{color:'#0f5fa8',width:3}, name:'Smooth', showlegend:false});
       }
       Plotly.newPlot('moderatorChart', traces, {
-        xaxis:{title:mod}, yaxis:{title:"Hedges's g", zeroline:true, zerolinecolor:'#cbd5e1'},
+        xaxis:{title:mod, automargin:true}, yaxis:{title:"Hedges's g", zeroline:true, zerolinecolor:'#cbd5e1'},
         margin:{l:55,r:20,t:20,b:50}, height:520
       },{displayModeBar:false,responsive:true});
     } else {
@@ -602,15 +610,16 @@ p{margin:0 0 .8em}
       levels.forEach(lv=>{
         const sub = es.filter(e=>e[mod]===lv);
         traces.push({
-          type:'violin', y:sub.map(e=>e.g), x:Array(sub.length).fill(lv), name:lv,
+          type:'violin', x:sub.map(e=>e.g), y:Array(sub.length).fill(lv), name:lv,
           box:{visible:false}, meanline:{visible:true,color:'#0f5fa8'}, points:'all', pointpos:0,
           jitter:0.4, marker:{color:'rgba(46,134,222,.6)',size:4}, line:{color:'#2E86DE',width:1},
           hoverinfo:'skip', showlegend:false
         });
       });
       Plotly.newPlot('moderatorChart', traces, {
-        xaxis:{title:mod, type:'category'}, yaxis:{title:"Hedges's g", zeroline:true, zerolinecolor:'#cbd5e1'},
-        margin:{l:55,r:20,t:20,b:60}, height:520
+        yaxis:{title:mod, type:'category', automargin:true, tickfont:{size:11}},
+        xaxis:{title:"Hedges's g", zeroline:true, zerolinecolor:'#cbd5e1', automargin:true},
+        margin:{l:55,r:20,t:20,b:50}, height:Math.max(420, levels.length*34)
       },{displayModeBar:false,responsive:true});
     }
     document.getElementById('moderatorChart').__opaq_ready = true;
@@ -702,11 +711,13 @@ p{margin:0 0 .8em}
       if(opts.onRender) opts.onRender();
       info.textContent = total + ' rows · page ' + (page + 1) + '/' + pages;
       nav.innerHTML = '';
-      const prev = document.createElement('button'); prev.className = 'btn ghost'; prev.textContent = '‹ Prev'; prev.disabled = page === 0;
-      const next = document.createElement('button'); next.className = 'btn ghost'; next.textContent = 'Next ›'; next.disabled = page >= pages - 1;
-      prev.onclick = () => { page--; render(); };
-      next.onclick = () => { page++; render(); };
-      nav.appendChild(prev); nav.appendChild(next);
+      if(pages > 1){
+        const prev = document.createElement('button'); prev.className = 'btn ghost'; prev.textContent = '‹ Prev'; prev.disabled = page === 0;
+        const next = document.createElement('button'); next.className = 'btn ghost'; next.textContent = 'Next ›'; next.disabled = page >= pages - 1;
+        prev.onclick = () => { page--; render(); };
+        next.onclick = () => { page++; render(); };
+        nav.appendChild(prev); nav.appendChild(next);
+      }
     }
 
     search.oninput = () => {
