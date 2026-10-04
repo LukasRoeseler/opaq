@@ -53,3 +53,7 @@ Röseler, L., Weber, L., Helgerth, K. A. C., Stich, E., Günther, M., Tegethoff,
 ## License
 
 CC-BY Attribution 4.0 International.
+
+## OSF data
+
+The complete OSF project (osf.io/ygnvb) is archived in the [\osf/\](./osf/) folder: raw datasets, older versions, correction protocols, individual datasets, processing scripts, research reports, supplementary materials, and the original Shiny app (osf/ShinyApp/app.R).
